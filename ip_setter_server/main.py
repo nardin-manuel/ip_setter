@@ -1,3 +1,5 @@
+import socket
+
 
 def read_file():
     delimeter = " "
@@ -20,7 +22,16 @@ def read_file():
 def find_ip_by_mac(line_list, mac):
     return line_list['ip'][line_list['mac'].index(mac)]
       
-  
-line_list = read_file()
-print(line_list)
-print(find_ip_by_mac(line_list, "cc:bb:aa:dd:ee:ff"))
+def connection():
+    sock=socket.socket(AF_PACKET,SOCK_DGRAM)
+    sock.bind(interface)
+    sock.sendto("prova",mac_dest)
+    
+    
+    
+    
+
+#line_list = read_file()
+#print(line_list)
+#print(find_ip_by_mac(line_list, "cc:bb:aa:dd:ee:ff"))
+connection()
