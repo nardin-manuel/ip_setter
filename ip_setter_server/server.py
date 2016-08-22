@@ -29,33 +29,36 @@ def mac_to_hex(mac):
     mac=mac[:-1] if mac[-1]=='\n' else mac
     return binascii.unhexlify(mac.replace(":",""))
 
-def sendto(mac_dst, interface, payload):
+def sendto(sock, mac_dst, interface, payload):
      mac_source=mac_to_hex(open('/sys/class/net/'+interface+'/address').readline())
      mac_dest = mac_to_hex(mac_dst)
      ethertype=binascii.unhexlify("88B5")
      _=("ip:192.168.1.1\n netmask:255.255.255.0\n gateway:192.168.1.254\n dns-nameservers:8.8.8.8-8.8.4.4")
      payload=_.encode("ASCII")
-     sock=socket(AF_PACKET, SOCK_RAW, htons(0x0003))
      sock.bind((interface,0))
      print (mac_source)
      sock.send(mac_dest+mac_source+ethertype+payload)
-     print("invio") 
-#     sock.close()
+     print("inviato")
+     
+def open_socket_read():
+    return socket(AF_PACKET, SOCK_RAW, htons(0x88b6))
 
-def receive(interface):
-     sock=socket(AF_PACKET, SOCK_RAW, htons(0x88b6))
+def open_socket_write():
+    return socket(AF_PACKET, SOCK_RAW, htons(0x88b5))
+
+def receive(sock, interface):
      sock.bind((interface,0))
      data=sock.recv(65536)
      return unpack(data)
-#     sock.close()
-
 
 def unpack(packet):
      mac_dst=decode_mac(packet[:6])
-     return decode_mac(packet[6:12])
-     print ("MAC DST: %s \nMAC SRC: %s"% ( mac_dst, mac_src))
-     print ("ETHERTYPE:", decode_ethertype(packet[12:14]))
-     print ("PAYLOAD:" , decode_payload(packet[14:]))
+     mac_src=decode_mac(packet[6:12])
+     ethertype=decode_ethertype(packet[12:14]))
+     payload= decode_payload(packet[14:]))
+     print ("MAC DST: %s \nMAC SRC: %s" % (mac_dst, mac_src))
+     print ("PAYLOAD:", payload)
+     return mac_src, payload
 
 def decode_mac(mac):
      _=(binascii.hexlify(mac)).decode("ASCII")     
@@ -69,8 +72,23 @@ def decode_payload(payload):
 
 
 #line_list = read_file()
-#ip=find_ip_by_mac(line_list, "7c:5c:f8:52:73:08")
 payload="l'indirizzo che avrai e': "
-for i in range(0, 10):
-    mac=receive("lo")
-    sendto(mac,"lo", payload)
+sock_read=open_socket_read()
+print("socket lettura aperto")
+open_write=0;
+while 1:
+    print("Attendo client")
+    packet=receive(sock_read, "lo")
+    mac=packet[0]
+    payload_recv=packet[1]
+    if not open_write:
+        sock_write=open_socket_write()
+        print("socket scrittura aperto")
+        open_write=1
+    if open_write:
+        time.sleep(0.1)
+        #ip=find_ip_by_mac(line_list, mac) if payload_recv=="Voglio un ip"
+        #if ip==-1: 
+            #print("Errore, impossibile trovare l'indirizzo mac: %s nella tabella"%(mac))
+        #else:
+        sendto(sock_write, mac,"lo", payload)
