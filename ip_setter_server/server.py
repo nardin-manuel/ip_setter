@@ -2,6 +2,7 @@
 import binascii
 import time
 from socket import *
+from _overlapped import NULL
 def read_file():
 	delimeter = " "
 	confirmed = "n"
@@ -12,7 +13,7 @@ def read_file():
 		print("il file selezionato e' il seguente:", file_src, "accettare?[s/N]")
 		confirmed = input()
 	file = open(file_src, "r")
-
+	
 	for line in file:
 		line = (line[:-1] if '\n' in line else line).split(delimeter, 1)  # tutta la linea tranne l'ultimo carattere(\n). Splitto sul delimeter. 1 solo delimimeter nella stringa
 		print (line)
@@ -69,13 +70,24 @@ def decode_ethertype(ethertype):
 def decode_payload(payload):
 	return payload.decode("ASCII")
 
+def ack_recv(line_list, out_list, mac):
+	ip=find_ip_by_mac(line_list, mac)
+	out_list['mac'].append(mac)
+	out_list['ip'].append(ip)
+	print("OK ricevuto dall' ip:",ip)
+	
+#****************************************************MAIN****************************************************#
 
-# line_list = read_file()
-payload = "l'indirizzo che avrai e': "
+line_list = read_file()
+gateway=input("Inserisci il gateway: ")
+interface=input("Inserisci interfaccia: ")
+dns="8.8.8.8 172.16.240.253"
+out_list={'mac':[], 'ip':[]}
 sock_read = open_socket_read()
 print("socket lettura aperto")
 open_write = 0;
-while 1:
+i = 0
+while i < (len(line_list)):
 	print("Attendo client")
 	packet = receive(sock_read, "lo")
 	mac = packet[0]
@@ -85,9 +97,23 @@ while 1:
 		print("socket scrittura aperto")
 		open_write = 1
 	if open_write:
-		time.sleep(0.1)
-		# ip=find_ip_by_mac(line_list, mac) if payload_recv=="Voglio un ip"
-		# if ip==-1: 
-		# print("Errore, impossibile trovare l'indirizzo mac: %s nella tabella"%(mac))
-		# else:
-		sendto(sock_write, mac, "lo", payload)
+		time.sleep(0.1)		
+		if payload_recv == "Voglio un ip":
+			try:
+				ip = find_ip_by_mac(line_list, mac)
+				payload=(interface+":"+ip+":"+gateway+":"+dns)
+				sendto(sock_write, mac, "lo", payload)
+				i += 1
+			except ValueError:	
+				print("Errore, impossibile trovare l'indirizzo mac: %s nella tabella" % (mac))
+		elif payload_recv == "OK":
+			ack_recv(mac)			
+print("A tutti i computer nella lista è stato dato un ip")
+if(len(line_list)>len(out_list)):
+	print ("Non tutti i computer hanno risposto")
+	s=set(out_list)
+	out_list=[line for line in line_list if line not in s]
+	print("i computer che non hanno risposto sono i seguenti:",out_list)
+else:
+	print("Tutti i computer hanno risposto")
+
