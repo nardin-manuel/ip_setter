@@ -2,7 +2,6 @@
 import binascii
 import time
 from socket import *
-from _overlapped import NULL
 def read_file():
 	delimeter = " "
 	confirmed = "n"
@@ -71,49 +70,69 @@ def decode_payload(payload):
 	return payload.decode("ASCII")
 
 def ack_recv(line_list, out_list, mac):
-	ip=find_ip_by_mac(line_list, mac)
+	ip = find_ip_by_mac(line_list, mac)
 	out_list['mac'].append(mac)
 	out_list['ip'].append(ip)
-	print("OK ricevuto dall' ip:",ip)
+	print("OK ricevuto dall' ip:", ip)
+
+def create_recovery_file(out_list):
+	confirmed = "n"
+	while (confirmed != "s"):
+		file_src = input("Inserisci la path del file: ")
+		print("il file selezionato e' il seguente:", file_src, "accettare?[s/N]")
+		confirmed = input()
+	file = open(file_src, "w")
+	for i in range(len(out_list['mac'])):
+		
+		file.write(out_list['mac'][i] + " " + out_list['ip'][i] + "\n")
+	file.close()
+	
 	
 #****************************************************MAIN****************************************************#
 
 line_list = read_file()
-gateway=input("Inserisci il gateway: ")
-interface=input("Inserisci interfaccia: ")
-dns="8.8.8.8 172.16.240.253"
-out_list={'mac':[], 'ip':[]}
+gateway = input("Inserisci il gateway: ")
+interface = input("Inserisci interfaccia: ")
+dns = "8.8.8.8 172.16.240.253"
+out_list = {'mac':[], 'ip':[]}
 sock_read = open_socket_read()
 print("socket lettura aperto")
 open_write = 0;
 i = 0
 while i < (len(line_list)):
 	print("Attendo client")
-	packet = receive(sock_read, "lo")
-	mac = packet[0]
-	payload_recv = packet[1]
+	mac, payload_recv = receive(sock_read, "lo")	
 	if not open_write:
 		sock_write = open_socket_write()
 		print("socket scrittura aperto")
 		open_write = 1
 	if open_write:
 		time.sleep(0.1)		
-		if payload_recv == "Voglio un ip":
+		if payload_recv == "Voglio un ip":			
 			try:
 				ip = find_ip_by_mac(line_list, mac)
-				payload=(interface+":"+ip+":"+gateway+":"+dns)
+				print ("Richiesta ricevuta dall'ip:", ip)
+				print("Richiesta #:", i)
+				payload = (interface + ":" + ip + ":" + gateway + ":" + dns)
 				sendto(sock_write, mac, "lo", payload)
 				i += 1
 			except ValueError:	
 				print("Errore, impossibile trovare l'indirizzo mac: %s nella tabella" % (mac))
 		elif payload_recv == "OK":
-			ack_recv(mac)			
+			ack_recv(mac)
+		else:
+			print("Ricevuto una cosa strana:", payload_recv)		
+sock_read.close()
+sock_write.close()
 print("A tutti i computer nella lista è stato dato un ip")
-if(len(line_list)>len(out_list)):
+if(len(line_list['ip']) > len(out_list['ip'])):
 	print ("Non tutti i computer hanno risposto")
-	s=set(out_list)
-	out_list=[line for line in line_list if line not in s]
-	print("i computer che non hanno risposto sono i seguenti:",out_list)
+	s = set(out_list['mac'])
+	out_list['mac'] = [line for line in line_list['mac'] if line not in s]
+	out_list['ip'] = [find_ip_by_mac(line_list, mac) for mac in out_list['mac']]
+	print("i computer che non hanno risposto sono i seguenti:", out_list)
+	create_recovery_file(out_list) if (input("vuoi creare un file contenente solo i computer che non hanno risposto per riprovare?[Y/n]") == "Y") else exit	
 else:
 	print("Tutti i computer hanno risposto")
+	exit
 
