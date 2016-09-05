@@ -7,15 +7,17 @@ def receive(interface):
 	sock.bind((interface, 0))
 	print("Attendo pacchetto")
 	data = sock.recv(65536)
-	unpack(data)
 	sock.close()
+	return unpack(data)
 
 def unpack(packet):
 	mac_dst = decode_mac(packet[:6])
 	mac_src = decode_mac(packet[6:12])
+        payload=decode_payload(packet[14:])
 	print ("MAC DST: %s \nMAC SRC: %s" % (mac_dst, mac_src))
 	print ("ETHERTYPE:", decode_ethertype(packet[12:14]))
-	print ("PAYLOAD:" , decode_payload(packet[14:]))
+	print ("PAYLOAD:" , payload)
+        return mac_src, payload
 
 def decode_mac(mac):
 	_ = (binascii.hexlify(mac)).decode("ASCII")	
@@ -44,9 +46,23 @@ def request(mac_dst, interface, payload):
 	sock.send(mac_dest + mac_source + ethertype + payload)
 	print("invio")
 	sock.close()
-i = 0
-while 1:
-	input("Premi invio per spedire un pacchetto")
-	request("ff:ff:ff:ff:ff:ff", "lo", "Voglio un ip" + str(i))
-	i += 1
-	receive("lo")
+
+def set_interfaces(payload):
+	interfaces, ip, gateway, dns=payload.split(":",3))
+	string=("auto lo \n
+	iface lo inet loopback\n
+	\n
+	auto "+interface+"\n
+	iface "+interface+" inet static\n
+	address "+ip+"\n
+	gateway "+gateway+"\n
+	netmask "+netmask+"\n
+	dns-nameservers "+dns+"\n")
+	file=open("/etc/network/interfaces", "w")
+        file.write(string)
+        file.close()
+
+request("ff:ff:ff:ff:ff:ff", "lo", "Voglio un ip")
+mac, payload=receive("lo")
+set_interfaces(payload)
+request(mac, "lo", "OK")
