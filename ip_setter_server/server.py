@@ -8,7 +8,7 @@ def read_file():
 	line_list = {'mac':[], 'ip':[]}
 
 	while (confirmed != "s"):
-		file_src = input("Inserisci la path del file: ")
+		file_src = input("Inserisci il path del file: ")
 		print("il file selezionato e' il seguente:", file_src, "accettare?[s/N]")
 		confirmed = input()
 	file = open(file_src, "r")
@@ -32,10 +32,10 @@ def sendto(sock, mac_dst, interface, payload):
 	mac_source = mac_to_hex(open('/sys/class/net/' + interface + '/address').readline())
 	mac_dest = mac_to_hex(mac_dst)
 	ethertype = binascii.unhexlify("88B5")
-	_ = ("ip:192.168.1.1\n netmask:255.255.255.0\n gateway:192.168.1.254\n dns-nameservers:8.8.8.8-8.8.4.4")
-	payload = _.encode("ASCII")
+	#_ = ("ip:192.168.1.1\n netmask:255.255.255.0\n gateway:192.168.1.254\n dns-nameservers:8.8.8.8-8.8.4.4")
+	payload = payload.encode("ASCII")
 	sock.bind((interface, 0))
-	print (mac_source)
+#	print (mac_source)
 	sock.send(mac_dest + mac_source + ethertype + payload)
 	print("inviato")
 
@@ -52,7 +52,7 @@ def receive(sock, interface):
 
 def unpack(packet):
 	mac_dst = decode_mac(packet[:6])
-	mac_src = decode_mac(packet[6:12])
+	mac_src = decode_mac(packet[6:12]).upper()
 	ethertype = decode_ethertype(packet[12:14])
 	payload = decode_payload(packet[14:])
 	print ("MAC DST: %s \nMAC SRC: %s" % (mac_dst, mac_src))
@@ -89,42 +89,44 @@ def create_recovery_file(out_list):
 	
 	
 #****************************************************MAIN****************************************************#
-
 line_list = read_file()
 gateway = input("Inserisci il gateway: ")
 interface = input("Inserisci interfaccia: ")
+netmask="255.255.255.0"
 dns = "8.8.8.8 172.16.240.253"
 out_list = {'mac':[], 'ip':[]}
 sock_read = open_socket_read()
 print("socket lettura aperto")
 open_write = 0;
 i = 0
-while i < (len(line_list)):
+while i < (len(line_list['ip'])):
 	print("Attendo client")
-	mac, payload_recv = receive(sock_read, "lo")	
+	mac, payload_recv = receive(sock_read, "enp4s0")	
 	if not open_write:
 		sock_write = open_socket_write()
 		print("socket scrittura aperto")
 		open_write = 1
 	if open_write:
-		time.sleep(0.1)		
-		if payload_recv == "Voglio un ip":			
+		time.sleep(0.1)
+		#print(id(stringa),id(payload_recv))
+		print(repr(payload_recv))
+		if "1" in payload_recv:
 			try:
 				ip = find_ip_by_mac(line_list, mac)
 				print ("Richiesta ricevuta dall'ip:", ip)
-				print("Richiesta #:", i)
-				payload = (interface + ":" + ip + ":" + gateway + ":" + dns)
-				sendto(sock_write, mac, "lo", payload)
+				print("Richiesta #:", i+1)
+				payload = (interface + ":" + ip + ":" +netmask+ ":" + gateway + ":" + dns)
+				sendto(sock_write, mac, "enp4s0", payload)
 				i += 1
 			except ValueError:	
 				print("Errore, impossibile trovare l'indirizzo mac: %s nella tabella" % (mac))
-		elif payload_recv == "OK":
-			ack_recv(mac)
+		elif "OK" in payload_recv:
+			ack_recv(line_list, out_list, mac)
 		else:
 			print("Ricevuto una cosa strana:", payload_recv)		
 sock_read.close()
 sock_write.close()
-print("A tutti i computer nella lista è stato dato un ip")
+print("A tutti i computer nella lista e' stato dato un ip")
 if(len(line_list['ip']) > len(out_list['ip'])):
 	print ("Non tutti i computer hanno risposto")
 	s = set(out_list['mac'])
