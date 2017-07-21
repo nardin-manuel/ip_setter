@@ -48,7 +48,7 @@ def request(mac_dst, interface, payload):
 	sock.close()
 
 def set_interfaces(payload):
-	interfaces, ip, gateway, dns=payload.split(":",3))
+	interfaces, ip, netmask, gateway, dns=payload.split(":",4))
 	string=("auto lo \n
 	iface lo inet loopback\n
 	\n
@@ -62,7 +62,7 @@ def set_interfaces(payload):
         file.write(string)
         file.close()
 
-request("ff:ff:ff:ff:ff:ff", "lo", "Voglio un ip")
-mac, payload=receive("lo")
+request("ff:ff:ff:ff:ff:ff", "enp0s25", "1")
+mac, payload=receive("enp0s25")
 set_interfaces(payload)
-request(mac, "lo", "OK")
+request(mac, "enp0s25", "OK")
