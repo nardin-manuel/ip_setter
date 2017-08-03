@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 import binascii
-import time
 from socket import *
+import time
+
+
 def read_file():
 	delimeter = " "
 	confirmed = "n"
@@ -14,7 +16,7 @@ def read_file():
 	file = open(file_src, "r")
 	
 	for line in file:
-		line = (line[:-1] if '\n' in line else line).split(delimeter, 1)  # tutta la linea tranne l'ultimo carattere(\n). Splitto sul delimeter. 1 solo delimimeter nella stringa
+		line = (line[:-1] if '\n' in line else line).split(delimeter, 1)
 		print (line)
 		line_list['mac'].append(line[0])
 		line_list['ip'].append(line[1])
@@ -25,17 +27,15 @@ def find_ip_by_mac(line_list, mac):
 	return line_list['ip'][line_list['mac'].index(mac)]
 
 def mac_to_hex(mac):
-	mac = mac[:-1] if mac[-1] == '\n' else mac
-	return binascii.unhexlify(mac.replace(":", ""))
+	#mac = mac[:-1] if mac[-1] == '\n' else mac
+	return binascii.unhexlify((mac[:-1] if mac[-1] == '\n' else mac).replace(":", ""))
 
 def sendto(sock, mac_dst, interface, payload):
 	mac_source = mac_to_hex(open('/sys/class/net/' + interface + '/address').readline())
 	mac_dest = mac_to_hex(mac_dst)
 	ethertype = binascii.unhexlify("88B5")
-	#_ = ("ip:192.168.1.1\n netmask:255.255.255.0\n gateway:192.168.1.254\n dns-nameservers:8.8.8.8-8.8.4.4")
 	payload = payload.encode("ASCII")
 	sock.bind((interface, 0))
-#	print (mac_source)
 	sock.send(mac_dest + mac_source + ethertype + payload)
 	print("inviato")
 
@@ -82,8 +82,7 @@ def create_recovery_file(out_list):
 		print("il file selezionato e' il seguente:", file_src, "accettare?[s/N]")
 		confirmed = input()
 	file = open(file_src, "w")
-	for i in range(len(out_list['mac'])):
-		
+	for i in range(len(out_list['mac'])):		
 		file.write(out_list['mac'][i] + " " + out_list['ip'][i] + "\n")
 	file.close()
 	
@@ -108,7 +107,6 @@ while i < (len(line_list['ip'])):
 		open_write = 1
 	if open_write:
 		time.sleep(0.1)
-		#print(id(stringa),id(payload_recv))
 		print(repr(payload_recv))
 		if "1" in payload_recv:
 			try:
